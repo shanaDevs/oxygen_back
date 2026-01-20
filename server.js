@@ -14,7 +14,9 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: process.env.CORS_ORIGINS 
+        ? process.env.CORS_ORIGINS.split(',') 
+        : ['http://localhost:3000', 'http://127.0.0.1:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
@@ -37,8 +39,8 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: `http://localhost:${process.env.PORT || 5000}`,
-                description: 'Development server',
+                url: process.env.API_URL || `http://localhost:${process.env.PORT || 5000}`,
+                description: process.env.VERCEL ? 'Production server' : 'Development server',
             },
         ],
         tags: [
@@ -150,10 +152,13 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Start server
-const startServer = async () => {
+// Database initialization (for serverless, run once)
+let isDbInitialized = false;
+
+const initializeDatabase = async () => {
+    if (isDbInitialized) return;
+    
     try {
-        // Test database connection
         await sequelize.authenticate();
         console.log('✅ Database connection established successfully.');
 
@@ -171,37 +176,56 @@ const startServer = async () => {
             // Seed dummy data for oxygen refilling center
             await seedDummyData();
         }
-
-        app.listen(PORT, () => {
-            console.log('');
-            console.log('╔═══════════════════════════════════════════════════════════╗');
-            console.log('║                                                           ║');
-            console.log('║   🏭 Oxygen Refilling Center POS API                      ║');
-            console.log('║                                                           ║');
-            console.log('╚═══════════════════════════════════════════════════════════╝');
-            console.log('');
-            console.log(`🚀 Server running on port: ${PORT}`);
-            console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-            console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-            console.log('');
-            console.log('Available Endpoints:');
-            console.log('  • /api/dashboard/stats  - Dashboard statistics');
-            console.log('  • /api/customers        - Customer management');
-            console.log('  • /api/suppliers        - Supplier management');
-            console.log('  • /api/bottles          - Bottle management');
-            console.log('  • /api/tank             - Tank management');
-            console.log('  • /api/sales            - Sales management');
-            console.log('');
-            console.log('═══════════════════════════════════════════════════════════');
-        });
+        
+        isDbInitialized = true;
     } catch (error) {
-        console.error('❌ Unable to start server:', error);
-        process.exit(1);
+        console.error('❌ Database initialization error:', error);
+        throw error;
     }
 };
 
-startServer();
+// For Vercel serverless deployment
+if (process.env.VERCEL) {
+    // Export the app for serverless
+    module.exports = app;
+} else {
+    // Start server for local development
+    const startServer = async () => {
+        try {
+            await initializeDatabase();
 
+            app.listen(PORT, () => {
+                console.log('');
+                console.log('╔═══════════════════════════════════════════════════════════╗');
+                console.log('║                                                           ║');
+                console.log('║   🏭 Oxygen Refilling Center POS API                      ║');
+                console.log('║                                                           ║');
+                console.log('╚═══════════════════════════════════════════════════════════╝');
+                console.log('');
+                console.log(`🚀 Server running on port: ${PORT}`);
+                console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+                console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+                console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+                console.log('');
+                console.log('Available Endpoints:');
+                console.log('  • /api/dashboard/stats  - Dashboard statistics');
+                console.log('  • /api/customers        - Customer management');
+                console.log('  • /api/suppliers        - Supplier management');
+                console.log('  • /api/bottles          - Bottle management');
+                console.log('  • /api/tank             - Tank management');
+                console.log('  • /api/sales            - Sales management');
+                console.log('');
+                console.log('═══════════════════════════════════════════════════════════');
+            });
+        } catch (error) {
+            console.error('❌ Unable to start server:', error);
+            process.exit(1);
+        }
+    };
+
+    startServer();
+}
+
+// Also export for testing
 module.exports = app;
 
