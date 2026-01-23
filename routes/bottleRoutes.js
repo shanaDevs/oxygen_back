@@ -71,25 +71,7 @@ const bottleController = require('../controllers/bottleController');
  */
 router.get('/', bottleController.getAllBottles);
 
-/**
- * @swagger
- * /api/bottles/{id}:
- *   get:
- *     summary: Get bottle by ID
- *     tags: [Bottles]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Bottle details
- *       404:
- *         description: Bottle not found
- */
-router.get('/:id', bottleController.getBottleById);
+
 
 /**
  * @swagger
@@ -128,39 +110,7 @@ router.get('/:id', bottleController.getBottleById);
  */
 router.post('/', bottleController.createBottle);
 
-/**
- * @swagger
- * /api/bottles/{id}:
- *   put:
- *     summary: Update bottle
- *     tags: [Bottles]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               serialNumber:
- *                 type: string
- *               capacityLiters:
- *                 type: number
- *               status:
- *                 type: string
- *                 enum: [empty, filled, with_customer]
- *     responses:
- *       200:
- *         description: Bottle updated successfully
- *       404:
- *         description: Bottle not found
- */
-router.put('/:id', bottleController.updateBottle);
+
 
 /**
  * @swagger
@@ -421,6 +371,60 @@ router.get('/ledger', bottleController.getAllLedgerEntries);
  *                         $ref: '#/components/schemas/BottleLedgerEntry'
  */
 router.get('/ledger/summary', bottleController.getLedgerSummary);
+
+/**
+ * @swagger
+ * /api/bottles/{id}:
+ *   get:
+ *     summary: Get bottle by ID
+ *     tags: [Bottles]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Bottle details
+ *       404:
+ *         description: Bottle not found
+ */
+router.get('/:id', bottleController.getBottleById);
+
+/**
+ * @swagger
+ * /api/bottles/{id}:
+ *   put:
+ *     summary: Update bottle
+ *     tags: [Bottles]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               serialNumber:
+ *                 type: string
+ *               capacityLiters:
+ *                 type: number
+ *               status:
+ *                 type: string
+ *                 enum: [empty, filled, with_customer]
+ *     responses:
+ *       200:
+ *         description: Bottle updated successfully
+ *       404:
+ *         description: Bottle not found
+ */
+router.put('/:id', bottleController.updateBottle);
 
 /**
  * @swagger
