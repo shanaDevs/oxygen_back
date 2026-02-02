@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         serialNumber: {
             type: DataTypes.STRING(100),
-            allowNull: false,
+            allowNull: true,
             field: 'serial_number'
         },
         // Operation type

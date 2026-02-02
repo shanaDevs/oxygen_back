@@ -324,7 +324,7 @@ exports.receiveBottlesBulk = async (req, res) => {
                     bottle = await Bottle.create({
                         id: generateId('bot'),
                         serialNumber: null, // Optional serial
-                        capacityLiters: bType?.capacityLiters || 40,
+                        capacityLiters: parseFloat(bType?.capacityLiters) || 40,
                         bottleTypeId: bottleTypeId,
                         status: 'empty',
                         location: 'center',
@@ -554,11 +554,11 @@ exports.fillBottles = async (req, res) => {
         let totalKgNeeded = 0;
         for (const bottle of bottles) {
             if (bottle.bottleType && bottle.bottleType.refillKg) {
-                totalKgNeeded += parseFloat(bottle.bottleType.refillKg);
+                totalKgNeeded += parseFloat(bottle.bottleType.refillKg) || 0;
             } else {
                 // Fallback calculation: estimate based on capacity (rough conversion)
                 // Assuming ~0.2 kg per liter for oxygen
-                totalKgNeeded += parseFloat(bottle.capacityLiters) * 0.2;
+                totalKgNeeded += (parseFloat(bottle.capacityLiters) || 0) * 0.2;
             }
         }
 
@@ -619,7 +619,9 @@ exports.fillBottles = async (req, res) => {
 
         // Log each bottle to ledger
         for (const bottle of bottles) {
-            const kgUsed = bottle.bottleType ? parseFloat(bottle.bottleType.refillKg) : parseFloat(bottle.capacityLiters) * 0.2;
+            const kgUsed = (bottle.bottleType && bottle.bottleType.refillKg)
+                ? parseFloat(bottle.bottleType.refillKg)
+                : (parseFloat(bottle.capacityLiters) || 0) * 0.2;
 
             await BottleLedger.create({
                 id: generateId('bl'),
@@ -630,6 +632,7 @@ exports.fillBottles = async (req, res) => {
                 newStatus: 'filled',
                 tankHistoryId: tankHistoryRecord.id,
                 kgUsed: kgUsed,
+                litersUsed: bottle.capacityLiters,
                 notes: `Filled from main tank using ${kgUsed.toFixed(3)}kg`
             }, { transaction: t });
         }
