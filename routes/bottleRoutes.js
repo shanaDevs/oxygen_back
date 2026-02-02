@@ -95,7 +95,7 @@ router.get('/filled', bottleController.getFilledBottles);
  * @swagger
  * /api/bottles/serial/{serial}:
  *   get:
- *     summary: Get bottle by serial number
+ *     summary: Get bottle by serial numbers
  *     tags: [Bottles]
  */
 router.get('/serial/:serial', bottleController.getBottleBySerial);
