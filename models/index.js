@@ -19,6 +19,8 @@ const Sale = require('./Sale')(sequelize, Sequelize);
 const SalePayment = require('./SalePayment')(sequelize, Sequelize);
 const BottleLedger = require('./BottleLedger')(sequelize, Sequelize);
 const Notification = require('./Notification')(sequelize, Sequelize);
+const SupplierPayment = require('./SupplierPayment')(sequelize, Sequelize);
+const CustomerPayment = require('./CustomerPayment')(sequelize, Sequelize);
 
 // ==================== RELATIONSHIPS ====================
 
@@ -105,6 +107,27 @@ Supplier.hasMany(SupplierTransaction, {
     as: 'transactions'
 });
 
+// SupplierPayment relationships
+SupplierPayment.belongsTo(Supplier, {
+    foreignKey: 'supplierId',
+    as: 'supplier'
+});
+
+Supplier.hasMany(SupplierPayment, {
+    foreignKey: 'supplierId',
+    as: 'payments'
+});
+
+SupplierPayment.belongsTo(SupplierTransaction, {
+    foreignKey: 'transactionId',
+    as: 'transaction'
+});
+
+SupplierTransaction.hasMany(SupplierPayment, {
+    foreignKey: 'transactionId',
+    as: 'payments'
+});
+
 // Product & Category relationship
 Product.belongsTo(Category, {
     foreignKey: 'categoryId',
@@ -173,6 +196,27 @@ Notification.belongsTo(User, {
     as: 'user'
 });
 
+// CustomerPayment relationships
+CustomerPayment.belongsTo(Customer, {
+    foreignKey: 'customerId',
+    as: 'customer'
+});
+
+CustomerPayment.belongsTo(CustomerTransaction, {
+    foreignKey: 'transactionId',
+    as: 'transaction'
+});
+
+Customer.hasMany(CustomerPayment, {
+    foreignKey: 'customerId',
+    as: 'payments'
+});
+
+CustomerTransaction.hasMany(CustomerPayment, {
+    foreignKey: 'transactionId',
+    as: 'payments'
+});
+
 module.exports = {
     sequelize,
     Sequelize,
@@ -191,5 +235,7 @@ module.exports = {
     Sale,
     SalePayment,
     BottleLedger,
-    Notification
+    Notification,
+    SupplierPayment,
+    CustomerPayment
 };

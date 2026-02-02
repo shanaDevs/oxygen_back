@@ -167,15 +167,20 @@ exports.collectPayment = async (req, res) => {
             });
         }
 
-        // Create transaction record
-        await CustomerTransaction.create({
+        // Create payment transaction record with correct field names
+        const paymentTransaction = await CustomerTransaction.create({
             id: generateId('ctx'),
             customerId,
-            type: 'payment',
-            amount: amount,
-            description: notes || `Payment received - ${paymentMethod || 'cash'}`,
-            balanceBefore: currentCredit,
-            balanceAfter: currentCredit - amount
+            customerName: customer.name,
+            transactionType: 'payment',
+            bottleIds: [],
+            bottleCount: 0,
+            bottleType: null,
+            totalAmount: 0,
+            amountPaid: amount,
+            creditAmount: -(amount), // Negative because it reduces credit
+            paymentStatus: 'full',
+            notes: notes || `Payment received - ${paymentMethod || 'cash'}`
         });
 
         // Update customer credit
@@ -186,6 +191,7 @@ exports.collectPayment = async (req, res) => {
         res.json({
             success: true,
             data: {
+                transactionId: paymentTransaction.id,
                 amountCollected: amount,
                 previousCredit: currentCredit,
                 newCredit: currentCredit - amount,

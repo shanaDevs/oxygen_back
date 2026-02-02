@@ -1,4 +1,4 @@
-const { Sale, SalePayment, Customer, Bottle, BottleType, BottleLedger, Notification, sequelize } = require('../models');
+const { Sale, SalePayment, Customer, CustomerTransaction, Bottle, BottleType, BottleLedger, Notification, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Generate unique ID
@@ -165,6 +165,7 @@ exports.getSaleByInvoice = async (req, res) => {
 // Create sale (POS transaction)
 exports.createSale = async (req, res) => {
     const t = await sequelize.transaction();
+    const transactionId = generateId('ctx');
 
     try {
         const {
@@ -343,6 +344,7 @@ exports.createSale = async (req, res) => {
                     newLocation: 'center',
                     customerId: customer.id,
                     customerName: customer.name,
+                    transactionId: transactionId,
                     notes: ret.notes || `Returned via sale transaction`
                 }, { transaction: t });
             }
@@ -405,6 +407,24 @@ exports.createSale = async (req, res) => {
             saleDate: new Date()
         }, { transaction: t });
 
+        // Create CustomerTransaction record for the unified ledger
+        await CustomerTransaction.create({
+            id: transactionId,
+            customerId,
+            customerName: customer.name,
+            saleId: sale.id,
+            invoiceNumber: invoiceNumber,
+            transactionType: 'sale',
+            bottleIds: bottles.map(b => b.id),
+            bottleCount: bottles.length,
+            bottleType: bottles.length > 0 ? (bottles[0].bottleType?.name || `${bottles[0].capacityLiters}L`) : 'Mixed',
+            totalAmount: total,
+            amountPaid: paid,
+            creditAmount: creditAmount,
+            paymentStatus: finalPaymentStatus,
+            notes: notes || `POS Sale: ${invoiceNumber}`
+        }, { transaction: t });
+
         if (paid > 0) {
             await SalePayment.create({
                 id: generateId('pay'),
@@ -440,6 +460,7 @@ exports.createSale = async (req, res) => {
                 newLocation: 'customer',
                 customerId: customer.id,
                 customerName: customer.name,
+                transactionId: transactionId,
                 saleId: sale.id,
                 amount: bottle.bottleType ? parseFloat(bottle.bottleType.pricePerFill) : 0,
                 notes: `Issued via sale ${invoiceNumber}`
@@ -538,6 +559,24 @@ exports.addPayment = async (req, res) => {
             notes,
             receivedBy,
             paymentDate: new Date()
+        }, { transaction: t });
+
+        // Create CustomerTransaction record for the unified ledger
+        await CustomerTransaction.create({
+            id: generateId('ctx'),
+            customerId: sale.customerId,
+            customerName: sale.customerName,
+            saleId: sale.id,
+            invoiceNumber: sale.invoiceNumber,
+            transactionType: 'payment',
+            bottleIds: [],
+            bottleCount: 0,
+            bottleType: null,
+            totalAmount: 0,
+            amountPaid: paymentAmount,
+            creditAmount: -paymentAmount,
+            paymentStatus: 'full',
+            notes: notes || `Payment for Invoice ${sale.invoiceNumber}`
         }, { transaction: t });
 
         // Update sale

@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { Sale, Bottle, BottleLedger, Customer } = require('../models');
-const { generateInvoicePDF, generateBottleLedgerPDF, generateCustomerStatementPDF, generatePaymentReceiptPDF } = require('../utils/pdfGenerator');
+const { Sale, Bottle, BottleLedger, Customer, Supplier, SupplierTransaction, SupplierPayment } = require('../models');
+const {
+    generateInvoicePDF,
+    generateBottleLedgerPDF,
+    generateCustomerStatementPDF,
+    generateSupplierStatementPDF,
+    generatePaymentReceiptPDF
+} = require('../utils/pdfGenerator');
 
 /**
  * @swagger
@@ -135,6 +141,78 @@ router.get('/customer-statement/:customerId', async (req, res) => {
         );
     } catch (error) {
         console.error('Error generating customer statement PDF:', error);
+        res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });
+    }
+});
+
+/**
+ * @swagger
+ * /api/pdf/supplier-statement/{supplierId}:
+ *   get:
+ *     summary: Generate supplier statement PDF
+ *     tags: [PDF]
+ */
+router.get('/supplier-statement/:supplierId', async (req, res) => {
+    try {
+        let supplier;
+        let transactions;
+        let payments;
+
+        if (req.params.supplierId === 'all') {
+            // Global view
+            const allSuppliers = await Supplier.findAll();
+            const totalOutstanding = allSuppliers.reduce((sum, s) => sum + parseFloat(s.totalOutstanding || 0), 0);
+
+            supplier = {
+                name: 'ALL SUPPLIERS - GLOBAL STATEMENT',
+                phone: 'Multi-vendor Report',
+                address: 'Oxygen Refilling Center Network',
+                totalOutstanding: totalOutstanding
+            };
+
+            transactions = await SupplierTransaction.findAll({
+                order: [['createdAt', 'DESC']],
+                limit: 100
+            });
+
+            payments = await SupplierPayment.findAll({
+                order: [['paymentDate', 'DESC']],
+                limit: 100
+            });
+        } else {
+            // Single supplier view
+            supplier = await Supplier.findByPk(req.params.supplierId);
+
+            if (!supplier) {
+                return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Supplier not found' } });
+            }
+
+            supplier = supplier.toJSON();
+
+            transactions = await SupplierTransaction.findAll({
+                where: { supplierId: req.params.supplierId },
+                order: [['createdAt', 'DESC']],
+                limit: 50
+            });
+
+            payments = await SupplierPayment.findAll({
+                where: { supplierId: req.params.supplierId },
+                order: [['paymentDate', 'DESC']],
+                limit: 50
+            });
+
+            transactions = transactions.map(t => t.toJSON());
+            payments = payments.map(p => p.toJSON());
+        }
+
+        generateSupplierStatementPDF(
+            supplier,
+            transactions,
+            payments,
+            res
+        );
+    } catch (error) {
+        console.error('Error generating supplier statement PDF:', error);
         res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });
     }
 });

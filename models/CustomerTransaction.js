@@ -14,8 +14,18 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             field: 'customer_name'
         },
+        saleId: {
+            type: DataTypes.STRING(50),
+            allowNull: true,
+            field: 'sale_id'
+        },
+        invoiceNumber: {
+            type: DataTypes.STRING(50),
+            allowNull: true,
+            field: 'invoice_number'
+        },
         transactionType: {
-            type: DataTypes.ENUM('issue', 'return', 'refill', 'payment'),
+            type: DataTypes.ENUM('issue', 'return', 'refill', 'payment', 'sale'),
             allowNull: false,
             field: 'transaction_type'
         },

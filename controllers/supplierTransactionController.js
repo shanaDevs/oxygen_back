@@ -1,4 +1,4 @@
-const { SupplierTransaction, Supplier, MainTank, TankHistory, sequelize } = require('../models');
+const { SupplierTransaction, Supplier, MainTank, TankHistory, SupplierPayment, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Generate unique ID
@@ -9,7 +9,9 @@ const formatTransaction = (tx) => ({
     id: tx.id,
     supplierId: tx.supplierId,
     supplierName: tx.supplierName,
+    kgSupplied: parseFloat(tx.litersSupplied) || 0, // Map to kgSupplied for frontend
     litersSupplied: parseFloat(tx.litersSupplied) || 0,
+    pricePerKg: parseFloat(tx.pricePerLiter) || 0, // Map to pricePerKg for frontend
     pricePerLiter: parseFloat(tx.pricePerLiter) || 0,
     totalAmount: parseFloat(tx.totalAmount) || 0,
     amountPaid: parseFloat(tx.amountPaid) || 0,
@@ -231,6 +233,18 @@ exports.makePayment = async (req, res) => {
             totalOutstanding: Math.max(0, currentTotalOutstanding - originalAmount)
         }, { transaction: t });
 
+        // Record payment in ledger
+        await SupplierPayment.create({
+            id: generateId('sp'),
+            supplierId,
+            transactionId: transactionId || null,
+            amount: originalAmount,
+            paymentMethod: req.body.paymentMethod || 'cash',
+            reference: req.body.reference || null,
+            notes: notes || 'Supplier outstanding payment',
+            paymentDate: new Date()
+        }, { transaction: t });
+
         await t.commit();
 
         res.json({
@@ -240,6 +254,26 @@ exports.makePayment = async (req, res) => {
     } catch (error) {
         if (t) await t.rollback();
         console.error('Error making payment:', error);
+        res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });
+    }
+};
+
+// Get payment ledger
+exports.getPayments = async (req, res) => {
+    try {
+        const { supplierId } = req.query;
+        const where = {};
+        if (supplierId) where.supplierId = supplierId;
+
+        const payments = await SupplierPayment.findAll({
+            where,
+            include: [{ model: Supplier, as: 'supplier', attributes: ['name'] }],
+            order: [['paymentDate', 'DESC']]
+        });
+
+        res.json({ success: true, data: payments });
+    } catch (error) {
+        console.error('Error fetching payments:', error);
         res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });
     }
 };

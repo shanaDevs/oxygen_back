@@ -133,4 +133,21 @@ router.post('/', supplierTransactionController.createTransaction);
  */
 router.post('/payment', supplierTransactionController.makePayment);
 
+/**
+ * @swagger
+ * /api/supplier-transactions/payments:
+ *   get:
+ *     summary: Get all supplier payment records (ledger)
+ *     tags: [Supplier Transactions]
+ *     parameters:
+ *       - in: query
+ *         name: supplierId
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of payments made to suppliers
+ */
+router.get('/payments', supplierTransactionController.getPayments);
+
 module.exports = router;
