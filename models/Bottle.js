@@ -24,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         // Bottle status: empty (in center), filled (ready to issue), with_customer (issued out)
         status: {
-            type: DataTypes.ENUM('empty', 'filled', 'with_customer', 'maintenance', 'retired'),
+            type: DataTypes.ENUM('empty', 'filled', 'with_customer', 'maintenance', 'retired', 'damaged'),
             defaultValue: 'empty'
         },
         // Location: 'center' or 'customer'
