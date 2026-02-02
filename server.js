@@ -14,11 +14,9 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: process.env.CORS_ORIGINS
-        ? process.env.CORS_ORIGINS.split(',')
-        : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
     credentials: true
 }));
 app.use(morgan('dev'));
@@ -39,8 +37,8 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: process.env.API_URL || `http://localhost:${process.env.PORT || 5000}`,
-                description: process.env.VERCEL ? 'Production server' : 'Development server',
+                url: process.env.API_URL || '/',
+                description: 'API Server',
             },
         ],
         tags: [
