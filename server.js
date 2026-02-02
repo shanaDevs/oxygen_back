@@ -14,8 +14,8 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: process.env.CORS_ORIGINS 
-        ? process.env.CORS_ORIGINS.split(',') 
+    origin: process.env.CORS_ORIGINS
+        ? process.env.CORS_ORIGINS.split(',')
         : ['http://localhost:3000', 'http://127.0.0.1:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -98,7 +98,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
  *                   type: string
  */
 app.get('/', (req, res) => {
-    res.json({ 
+    res.json({
         success: true,
         message: 'Oxygen Refilling Center POS API is running',
         timestamp: new Date().toISOString()
@@ -107,8 +107,8 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        success: true, 
+    res.json({
+        success: true,
         message: 'Oxygen Refilling Center API is running',
         timestamp: new Date().toISOString()
     });
@@ -129,6 +129,8 @@ app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/sales', require('./routes/salesRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/categories', require('./routes/categoryRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/pdf', require('./routes/pdfRoutes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -141,12 +143,12 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ 
-        success: false, 
-        error: { 
-            code: 'NOT_FOUND', 
-            message: `Route ${req.method} ${req.path} not found` 
-        } 
+    res.status(404).json({
+        success: false,
+        error: {
+            code: 'NOT_FOUND',
+            message: `Route ${req.method} ${req.path} not found`
+        }
     });
 });
 
@@ -157,7 +159,7 @@ let isDbInitialized = false;
 
 const initializeDatabase = async () => {
     if (isDbInitialized) return;
-    
+
     try {
         await sequelize.authenticate();
         console.log('✅ Database connection established successfully.');
@@ -166,17 +168,17 @@ const initializeDatabase = async () => {
         if (process.env.NODE_ENV !== 'production') {
             await sequelize.sync({ alter: true });
             console.log('✅ Database models synchronized.');
-            
+
             // Seed default roles first
             await seedDefaultRoles();
-            
+
             // Then seed default super admin user
             await seedDefaultSuperAdmin();
-            
+
             // Seed dummy data for oxygen refilling center
             await seedDummyData();
         }
-        
+
         isDbInitialized = true;
     } catch (error) {
         console.error('❌ Database initialization error:', error);

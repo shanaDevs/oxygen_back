@@ -11,19 +11,27 @@ const salesController = require('../controllers/salesController');
  *       properties:
  *         id:
  *           type: string
+ *         invoiceNumber:
+ *           type: string
  *         customerId:
+ *           type: string
+ *         customerName:
  *           type: string
  *         items:
  *           type: array
  *           items:
  *             type: object
  *             properties:
- *               productId:
+ *               bottleId:
  *                 type: string
- *               quantity:
- *                 type: integer
+ *               serialNumber:
+ *                 type: string
+ *               capacityLiters:
+ *                 type: number
  *               price:
  *                 type: number
+ *         bottleCount:
+ *           type: integer
  *         subtotal:
  *           type: number
  *         tax:
@@ -34,14 +42,54 @@ const salesController = require('../controllers/salesController');
  *           type: number
  *         paymentMethod:
  *           type: string
- *           enum: [cash, card, mobile]
+ *           enum: [cash, credit, partial, bank_transfer]
+ *         amountPaid:
+ *           type: number
+ *         creditAmount:
+ *           type: number
  *         status:
  *           type: string
- *           enum: [completed, pending, cancelled]
- *         createdAt:
+ *           enum: [pending, completed, cancelled, refunded]
+ *         paymentStatus:
  *           type: string
- *           format: date-time
+ *           enum: [pending, partial, full]
  */
+
+/**
+ * @swagger
+ * /api/sales/statistics:
+ *   get:
+ *     summary: Get sales statistics
+ *     tags: [Sales]
+ */
+router.get('/statistics', salesController.getSalesStatistics);
+
+/**
+ * @swagger
+ * /api/sales/outstanding:
+ *   get:
+ *     summary: Get all outstanding sales
+ *     tags: [Sales]
+ */
+router.get('/outstanding', salesController.getAllOutstanding);
+
+/**
+ * @swagger
+ * /api/sales/outstanding/customer/{customerId}:
+ *   get:
+ *     summary: Get customer's outstanding sales
+ *     tags: [Sales]
+ */
+router.get('/outstanding/customer/:customerId', salesController.getCustomerOutstanding);
+
+/**
+ * @swagger
+ * /api/sales/invoice/{invoiceNumber}:
+ *   get:
+ *     summary: Get sale by invoice number
+ *     tags: [Sales]
+ */
+router.get('/invoice/:invoiceNumber', salesController.getSaleByInvoice);
 
 /**
  * @swagger
@@ -49,59 +97,14 @@ const salesController = require('../controllers/salesController');
  *   get:
  *     summary: Get all sales
  *     tags: [Sales]
- *     parameters:
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [completed, pending, cancelled]
- *       - in: query
- *         name: paymentMethod
- *         schema:
- *           type: string
- *           enum: [cash, card, mobile]
- *     responses:
- *       200:
- *         description: List of sales
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Sale'
  */
 router.get('/', salesController.getAllSales);
 
 /**
  * @swagger
- * /api/sales/{id}:
- *   get:
- *     summary: Get sale by ID
- *     tags: [Sales]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Sale details
- *       404:
- *         description: Sale not found
- */
-router.get('/:id', salesController.getSaleById);
-
-/**
- * @swagger
  * /api/sales:
  *   post:
- *     summary: Create a new sale
+ *     summary: Create a new sale (POS transaction)
  *     tags: [Sales]
  *     requestBody:
  *       required: true
@@ -110,61 +113,74 @@ router.get('/:id', salesController.getSaleById);
  *           schema:
  *             type: object
  *             required:
- *               - items
- *               - total
+ *               - customerId
+ *               - bottleIds
  *             properties:
  *               customerId:
  *                 type: string
- *               items:
+ *               bottleIds:
  *                 type: array
  *                 items:
- *                   type: object
- *               subtotal:
+ *                   type: string
+ *               taxPercentage:
  *                 type: number
- *               tax:
+ *               discountPercentage:
  *                 type: number
  *               discount:
  *                 type: number
- *               total:
- *                 type: number
  *               paymentMethod:
  *                 type: string
- *                 enum: [cash, card, mobile]
- *                 default: cash
- *     responses:
- *       201:
- *         description: Sale created successfully
+ *                 enum: [cash, credit, partial]
+ *               amountPaid:
+ *                 type: number
+ *               notes:
+ *                 type: string
  */
 router.post('/', salesController.createSale);
 
 /**
  * @swagger
  * /api/sales/{id}:
- *   put:
- *     summary: Update sale
+ *   get:
+ *     summary: Get sale by ID
  *     tags: [Sales]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
+ */
+router.get('/:id', salesController.getSaleById);
+
+/**
+ * @swagger
+ * /api/sales/{saleId}/payment:
+ *   post:
+ *     summary: Add payment to existing sale (for outstanding)
+ *     tags: [Sales]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - amount
  *             properties:
- *               status:
+ *               amount:
+ *                 type: number
+ *               paymentMethod:
  *                 type: string
- *                 enum: [completed, pending, cancelled]
- *     responses:
- *       200:
- *         description: Sale updated successfully
- *       404:
- *         description: Sale not found
+ *                 enum: [cash, bank_transfer, cheque, other]
+ *               reference:
+ *                 type: string
+ *               notes:
+ *                 type: string
  */
-router.put('/:id', salesController.updateSale);
+router.post('/:saleId/payment', salesController.addPayment);
+
+/**
+ * @swagger
+ * /api/sales/{id}/cancel:
+ *   post:
+ *     summary: Cancel a sale
+ *     tags: [Sales]
+ */
+router.post('/:id/cancel', salesController.cancelSale);
 
 module.exports = router;

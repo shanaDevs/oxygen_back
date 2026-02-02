@@ -66,6 +66,18 @@ router.get('/', customerController.getAllCustomers);
 
 /**
  * @swagger
+ * /api/customers/outstanding/list:
+ *   get:
+ *     summary: Get all customers with outstanding credit
+ *     tags: [Customers]
+ *     responses:
+ *       200:
+ *         description: List of customers with credit > 0
+ */
+router.get('/outstanding/list', customerController.getCustomersWithCredit);
+
+/**
+ * @swagger
  * /api/customers/{id}:
  *   get:
  *     summary: Get customer by ID
@@ -181,5 +193,45 @@ router.put('/:id', customerController.updateCustomer);
  *         description: Customer not found
  */
 router.delete('/:id', customerController.deleteCustomer);
+
+/**
+ * @swagger
+ * /api/customers/{id}/collect-payment:
+ *   post:
+ *     summary: Collect payment from customer for outstanding credit
+ *     tags: [Customers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Customer ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 description: Amount to collect
+ *               paymentMethod:
+ *                 type: string
+ *                 enum: [cash, bank_transfer]
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Payment collected successfully
+ *       400:
+ *         description: Invalid amount or exceeds credit
+ *       404:
+ *         description: Customer not found
+ */
+router.post('/:id/collect-payment', customerController.collectPayment);
 
 module.exports = router;

@@ -11,101 +11,102 @@ const tankController = require('../controllers/tankController');
  *       properties:
  *         id:
  *           type: string
- *           description: Tank ID
  *         name:
  *           type: string
- *           description: Tank name
- *         capacityLiters:
+ *         capacityTons:
  *           type: number
- *           description: Maximum tank capacity in liters
- *         currentLevelLiters:
+ *           description: Tank capacity in tons
+ *         currentLevelKg:
  *           type: number
- *           description: Current oxygen level in liters
- *         lastRefillDate:
- *           type: string
- *           format: date-time
- *           description: Last refill date
- *         lastRefillAmount:
+ *           description: Current oxygen level in kg
+ *         capacityKg:
  *           type: number
- *           description: Amount of last refill in liters
- *     TankHistory:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *         operationType:
- *           type: string
- *           enum: [refill, fill_bottles, adjustment]
- *         litersBefore:
+ *           description: Calculated capacity in kg
+ *         percentFull:
  *           type: number
- *         litersChanged:
+ *         lowLevelAlertKg:
  *           type: number
- *         litersAfter:
+ *         criticalLevelAlertKg:
  *           type: number
- *         supplierId:
- *           type: string
- *         notes:
- *           type: string
- *         createdAt:
- *           type: string
- *           format: date-time
  */
 
 /**
  * @swagger
  * /api/tank:
  *   get:
- *     summary: Get main tank status
+ *     summary: Get tank information (alias for /status)
  *     tags: [Tank]
- *     responses:
- *       200:
- *         description: Current tank status
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   $ref: '#/components/schemas/MainTank'
  */
 router.get('/', tankController.getTankStatus);
 
 /**
  * @swagger
- * /api/tank:
- *   put:
- *     summary: Manually update tank level (adjustment)
+ * /api/tank/status:
+ *   get:
+ *     summary: Get tank status
  *     tags: [Tank]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - currentLevelLiters
- *             properties:
- *               currentLevelLiters:
- *                 type: number
- *                 description: New tank level in liters
- *               notes:
- *                 type: string
- *                 description: Reason for adjustment
- *     responses:
- *       200:
- *         description: Tank level updated successfully
- *       400:
- *         description: Invalid level (exceeds capacity or negative)
  */
-router.put('/', tankController.updateTankLevel);
+router.get('/status', tankController.getTankStatus);
+
+/**
+ * @swagger
+ * /api/tank/statistics:
+ *   get:
+ *     summary: Get tank statistics
+ *     tags: [Tank]
+ */
+router.get('/statistics', tankController.getTankStatistics);
+
+/**
+ * @swagger
+ * /api/tank/history:
+ *   get:
+ *     summary: Get tank history
+ *     tags: [Tank]
+ */
+router.get('/history', tankController.getTankHistory);
+
+/**
+ * @swagger
+ * /api/tank/fill-history:
+ *   get:
+ *     summary: Get tank refill history
+ *     tags: [Tank]
+ */
+router.get('/fill-history', tankController.getTankFillHistory);
+
+/**
+ * @swagger
+ * /api/tank/usage-history:
+ *   get:
+ *     summary: Get tank usage history (bottle fills)
+ *     tags: [Tank]
+ */
+router.get('/usage-history', tankController.getTankUsageHistory);
+
+/**
+ * @swagger
+ * /api/tank/settings:
+ *   put:
+ *     summary: Update tank settings
+ *     tags: [Tank]
+ */
+router.put('/settings', tankController.updateTankSettings);
+
+/**
+ * @swagger
+ * /api/tank/level:
+ *   put:
+ *     summary: Update tank level (manual adjustment)
+ *     tags: [Tank]
+ */
+router.put('/level', tankController.updateTankLevel);
 
 /**
  * @swagger
  * /api/tank/refill:
  *   post:
- *     summary: Refill tank from supplier delivery
+ *     summary: Refill tank from supplier
  *     tags: [Tank]
  *     requestBody:
  *       required: true
@@ -115,141 +116,22 @@ router.put('/', tankController.updateTankLevel);
  *             type: object
  *             required:
  *               - supplierId
- *               - litersSupplied
- *               - pricePerLiter
+ *               - kgSupplied
  *             properties:
  *               supplierId:
  *                 type: string
- *                 description: Supplier ID
- *               litersSupplied:
+ *               kgSupplied:
  *                 type: number
- *                 description: Liters of oxygen delivered
- *               pricePerLiter:
+ *               pricePerKg:
  *                 type: number
- *                 description: Price per liter
  *               amountPaid:
  *                 type: number
- *                 description: Amount paid (default 0)
+ *               paymentStatus:
+ *                 type: string
+ *                 enum: [pending, partial, full]
  *               notes:
  *                 type: string
- *     responses:
- *       200:
- *         description: Tank refilled and supplier transaction created
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 data:
- *                   type: object
- *                   properties:
- *                     tankLevelBefore:
- *                       type: number
- *                     tankLevelAfter:
- *                       type: number
- *                     supplierTransaction:
- *                       type: object
- *       400:
- *         description: Refill would exceed tank capacity
  */
 router.post('/refill', tankController.refillTank);
-
-/**
- * @swagger
- * /api/tank/history:
- *   get:
- *     summary: Get tank operation history
- *     tags: [Tank]
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 50
- *         description: Number of records to return
- *     responses:
- *       200:
- *         description: List of tank operations
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/TankHistory'
- */
-router.get('/history', tankController.getTankHistory);
-
-/**
- * @swagger
- * /api/tank/fill-history:
- *   get:
- *     summary: Get tank fill/refill history
- *     tags: [Tank]
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 50
- *         description: Number of records to return
- *     responses:
- *       200:
- *         description: List of tank refill events with supplier and payment info
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                       mainTankId:
- *                         type: string
- *                       supplierId:
- *                         type: string
- *                       supplierName:
- *                         type: string
- *                       supplierPhone:
- *                         type: string
- *                       litersAdded:
- *                         type: number
- *                       previousLevel:
- *                         type: number
- *                       newLevel:
- *                         type: number
- *                       totalAmount:
- *                         type: number
- *                       amountPaid:
- *                         type: number
- *                       outstanding:
- *                         type: number
- *                       paymentStatus:
- *                         type: string
- *                         enum: [full, partial, outstanding, unknown]
- *                       notes:
- *                         type: string
- *                       filledAt:
- *                         type: string
- *                         format: date-time
- *                       createdAt:
- *                         type: string
- *                         format: date-time
- */
-router.get('/fill-history', tankController.getTankFillHistory);
 
 module.exports = router;

@@ -39,8 +39,8 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: 0.00
         },
         paymentStatus: {
-            type: DataTypes.ENUM('full', 'partial', 'outstanding'),
-            defaultValue: 'full',
+            type: DataTypes.ENUM('pending', 'partial', 'full'),
+            defaultValue: 'pending',
             field: 'payment_status'
         },
         notes: {

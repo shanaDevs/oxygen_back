@@ -16,7 +16,11 @@ const SupplierTransaction = require('./SupplierTransaction')(sequelize, Sequeliz
 const Category = require('./Category')(sequelize, Sequelize);
 const Product = require('./Product')(sequelize, Sequelize);
 const Sale = require('./Sale')(sequelize, Sequelize);
+const SalePayment = require('./SalePayment')(sequelize, Sequelize);
 const BottleLedger = require('./BottleLedger')(sequelize, Sequelize);
+const Notification = require('./Notification')(sequelize, Sequelize);
+
+// ==================== RELATIONSHIPS ====================
 
 // User & Role relationship
 User.belongsTo(Role, {
@@ -40,7 +44,7 @@ BottleType.hasMany(Bottle, {
     as: 'bottles'
 });
 
-// Bottle & Customer relationship
+// Bottle & Customer relationship (current holder)
 Bottle.belongsTo(Customer, {
     foreignKey: 'customerId',
     as: 'customer'
@@ -49,6 +53,17 @@ Bottle.belongsTo(Customer, {
 Customer.hasMany(Bottle, {
     foreignKey: 'customerId',
     as: 'bottles'
+});
+
+// Bottle & Customer relationship (owner)
+Bottle.belongsTo(Customer, {
+    foreignKey: 'ownerId',
+    as: 'owner'
+});
+
+Customer.hasMany(Bottle, {
+    foreignKey: 'ownerId',
+    as: 'customerOwnedBottles'
 });
 
 // TankHistory & MainTank relationship
@@ -107,6 +122,28 @@ Sale.belongsTo(Customer, {
     as: 'customer'
 });
 
+Customer.hasMany(Sale, {
+    foreignKey: 'customerId',
+    as: 'sales'
+});
+
+// SalePayment & Sale relationship
+SalePayment.belongsTo(Sale, {
+    foreignKey: 'saleId',
+    as: 'sale'
+});
+
+Sale.hasMany(SalePayment, {
+    foreignKey: 'saleId',
+    as: 'payments'
+});
+
+// SalePayment & Customer relationship
+SalePayment.belongsTo(Customer, {
+    foreignKey: 'customerId',
+    as: 'customer'
+});
+
 // BottleLedger & Bottle relationship
 BottleLedger.belongsTo(Bottle, {
     foreignKey: 'bottleId',
@@ -122,6 +159,18 @@ Bottle.hasMany(BottleLedger, {
 BottleLedger.belongsTo(Customer, {
     foreignKey: 'customerId',
     as: 'customer'
+});
+
+// BottleLedger & Sale relationship
+BottleLedger.belongsTo(Sale, {
+    foreignKey: 'saleId',
+    as: 'sale'
+});
+
+// Notification & User relationship
+Notification.belongsTo(User, {
+    foreignKey: 'userId',
+    as: 'user'
 });
 
 module.exports = {
@@ -140,5 +189,7 @@ module.exports = {
     Category,
     Product,
     Sale,
-    BottleLedger
+    SalePayment,
+    BottleLedger,
+    Notification
 };

@@ -18,6 +18,9 @@ const supplierController = require('../controllers/supplierController');
  *         phone:
  *           type: string
  *           description: Supplier phone number
+ *         phone2:
+ *           type: string
+ *           description: Supplier additional phone number
  *         email:
  *           type: string
  *           description: Supplier email
@@ -96,10 +99,14 @@ router.get('/:id', supplierController.getSupplierById);
  *             required:
  *               - name
  *               - phone
+ *               - email
+ *               - address
  *             properties:
  *               name:
  *                 type: string
  *               phone:
+ *                 type: string
+ *               phone2:
  *                 type: string
  *               email:
  *                 type: string
@@ -135,6 +142,8 @@ router.post('/', supplierController.createSupplier);
  *               name:
  *                 type: string
  *               phone:
+ *                 type: string
+ *               phone2:
  *                 type: string
  *               email:
  *                 type: string

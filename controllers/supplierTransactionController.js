@@ -24,17 +24,17 @@ exports.getAllTransactions = async (req, res) => {
     try {
         const { supplierId } = req.query;
         const where = {};
-        
+
         if (supplierId) {
             where.supplierId = supplierId;
         }
-        
+
         const transactions = await SupplierTransaction.findAll({
             where,
             order: [['createdAt', 'DESC']],
             limit: 100
         });
-        
+
         res.json({ success: true, data: transactions.map(formatTransaction) });
     } catch (error) {
         console.error('Error fetching transactions:', error);
@@ -45,24 +45,24 @@ exports.getAllTransactions = async (req, res) => {
 // Create supplier transaction (delivery)
 exports.createTransaction = async (req, res) => {
     const t = await sequelize.transaction();
-    
+
     try {
         const { supplierId, litersSupplied, pricePerLiter, amountPaid, paymentStatus, notes } = req.body;
-        
+
         if (!supplierId || !litersSupplied || litersSupplied <= 0) {
-            return res.status(400).json({ 
-                success: false, 
-                error: { code: 'VALIDATION_ERROR', message: 'Supplier ID and liters supplied are required' } 
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Supplier ID and liters supplied are required' }
             });
         }
-        
+
         // Get supplier
         const supplier = await Supplier.findByPk(supplierId, { transaction: t });
         if (!supplier) {
             await t.rollback();
             return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Supplier not found' } });
         }
-        
+
         // Get or create main tank
         let tank = await MainTank.findOne({ transaction: t });
         if (!tank) {
@@ -73,27 +73,27 @@ exports.createTransaction = async (req, res) => {
                 currentLevelLiters: 0
             }, { transaction: t });
         }
-        
+
         const currentLevel = parseFloat(tank.currentLevelLiters) || 0;
         const capacity = parseFloat(tank.capacityLiters) || 20000;
         const liters = parseFloat(litersSupplied);
         const newLevel = currentLevel + liters;
-        
+
         // Check if tank can hold the new supply
         if (newLevel > capacity) {
             await t.rollback();
-            return res.status(400).json({ 
-                success: false, 
-                error: { code: 'VALIDATION_ERROR', message: `Cannot add ${liters}L. Max available space: ${capacity - currentLevel}L` } 
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: `Cannot add ${liters}L. Max available space: ${capacity - currentLevel}L` }
             });
         }
-        
+
         // Calculate amounts
         const price = parseFloat(pricePerLiter) || 0;
         const totalAmount = liters * price;
         const paid = parseFloat(amountPaid) || 0;
         const outstanding = totalAmount - paid;
-        
+
         // Create transaction record
         const transaction = await SupplierTransaction.create({
             id: generateId('stx'),
@@ -107,21 +107,21 @@ exports.createTransaction = async (req, res) => {
             paymentStatus: paymentStatus || (outstanding > 0 ? 'partial' : 'full'),
             notes: notes || null
         }, { transaction: t });
-        
+
         // Update supplier stats
         await supplier.update({
             totalSupplied: parseFloat(supplier.totalSupplied) + liters,
             totalPaid: parseFloat(supplier.totalPaid) + paid,
             totalOutstanding: parseFloat(supplier.totalOutstanding) + (outstanding > 0 ? outstanding : 0)
         }, { transaction: t });
-        
+
         // Update main tank
         await tank.update({
             currentLevelLiters: newLevel,
             lastRefillDate: new Date(),
             lastRefillAmount: liters
         }, { transaction: t });
-        
+
         // Add tank history
         await TankHistory.create({
             id: generateId('th'),
@@ -133,13 +133,13 @@ exports.createTransaction = async (req, res) => {
             litersAfter: newLevel,
             notes: `Refill from ${supplier.name}`
         }, { transaction: t });
-        
+
         await t.commit();
-        
-        res.status(201).json({ 
-            success: true, 
-            data: formatTransaction(transaction), 
-            message: `${liters}L supplied by ${supplier.name}. Tank level: ${newLevel}L` 
+
+        res.status(201).json({
+            success: true,
+            data: formatTransaction(transaction),
+            message: `${liters}L supplied by ${supplier.name}. Tank level: ${newLevel}L`
         });
     } catch (error) {
         await t.rollback();
@@ -151,42 +151,94 @@ exports.createTransaction = async (req, res) => {
 // Make payment to supplier
 exports.makePayment = async (req, res) => {
     const t = await sequelize.transaction();
-    
+
     try {
-        const { supplierId, amount, notes } = req.body;
-        
-        if (!supplierId || !amount || amount <= 0) {
-            return res.status(400).json({ 
-                success: false, 
-                error: { code: 'VALIDATION_ERROR', message: 'Supplier ID and valid amount are required' } 
+        const { supplierId, amount, transactionId, notes } = req.body;
+
+        if (!supplierId || !amount || parseFloat(amount) <= 0) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Supplier ID and valid amount are required' }
             });
         }
-        
+
         // Get supplier
         const supplier = await Supplier.findByPk(supplierId, { transaction: t });
         if (!supplier) {
             await t.rollback();
             return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Supplier not found' } });
         }
-        
-        const currentOutstanding = parseFloat(supplier.totalOutstanding) || 0;
-        const paymentAmount = parseFloat(amount);
-        const newOutstanding = Math.max(0, currentOutstanding - paymentAmount);
-        
-        // Update supplier
+
+        let remainingPayment = parseFloat(amount);
+        const originalAmount = remainingPayment;
+
+        // If a specific transaction ID is provided, prioritize it
+        if (transactionId) {
+            const specificTx = await SupplierTransaction.findOne({
+                where: { id: transactionId, supplierId },
+                transaction: t
+            });
+
+            if (specificTx && specificTx.outstanding > 0) {
+                const allocation = Math.min(remainingPayment, parseFloat(specificTx.outstanding));
+                const newOutstanding = Math.max(0, parseFloat(specificTx.outstanding) - allocation);
+
+                await specificTx.update({
+                    amountPaid: parseFloat(specificTx.amountPaid) + allocation,
+                    outstanding: newOutstanding,
+                    paymentStatus: newOutstanding === 0 ? 'full' : 'partial',
+                    notes: notes ? `${specificTx.notes || ''} | ${notes}` : specificTx.notes
+                }, { transaction: t });
+
+                remainingPayment -= allocation;
+            }
+        }
+
+        // If there's still money left (or no specific transaction ID), use FIFO
+        if (remainingPayment > 0) {
+            const outstandingTxns = await SupplierTransaction.findAll({
+                where: {
+                    supplierId,
+                    outstanding: { [Op.gt]: 0 },
+                    id: transactionId ? { [Op.ne]: transactionId } : { [Op.not]: null } // Exclude the one we just paid if applicable
+                },
+                order: [['createdAt', 'ASC']],
+                transaction: t
+            });
+
+            for (const tx of outstandingTxns) {
+                if (remainingPayment <= 0) break;
+
+                const allocation = Math.min(remainingPayment, parseFloat(tx.outstanding));
+                const newOutstanding = Math.max(0, parseFloat(tx.outstanding) - allocation);
+
+                await tx.update({
+                    amountPaid: parseFloat(tx.amountPaid) + allocation,
+                    outstanding: newOutstanding,
+                    paymentStatus: newOutstanding === 0 ? 'full' : 'partial'
+                }, { transaction: t });
+
+                remainingPayment -= allocation;
+            }
+        }
+
+        // Update supplier totals
+        const currentTotalPaid = parseFloat(supplier.totalPaid) || 0;
+        const currentTotalOutstanding = parseFloat(supplier.totalOutstanding) || 0;
+
         await supplier.update({
-            totalPaid: parseFloat(supplier.totalPaid) + paymentAmount,
-            totalOutstanding: newOutstanding
+            totalPaid: currentTotalPaid + originalAmount,
+            totalOutstanding: Math.max(0, currentTotalOutstanding - originalAmount)
         }, { transaction: t });
-        
+
         await t.commit();
-        
-        res.json({ 
-            success: true, 
-            message: `Payment of Rs. ${paymentAmount} made to ${supplier.name}. Remaining outstanding: Rs. ${newOutstanding}` 
+
+        res.json({
+            success: true,
+            message: `Payment of Rs. ${originalAmount} processed. ${remainingPayment > 0 ? `Unallocated remainder: Rs. ${remainingPayment}` : ''}`
         });
     } catch (error) {
-        await t.rollback();
+        if (t) await t.rollback();
         console.error('Error making payment:', error);
         res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: error.message } });
     }
