@@ -1,4 +1,5 @@
 const { Supplier, SupplierTransaction } = require('../models');
+const { isValidSriLankanPhone } = require('../utils/validation');
 
 // Generate unique ID
 const generateId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -65,6 +66,20 @@ exports.createSupplier = async (req, res) => {
             });
         }
 
+        if (phone && !isValidSriLankanPhone(phone)) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Invalid primary Sri Lankan phone number' }
+            });
+        }
+
+        if (phone2 && !isValidSriLankanPhone(phone2)) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Invalid secondary Sri Lankan phone number' }
+            });
+        }
+
         // Check for existing supplier with same phone
         const existingSupplier = await Supplier.findOne({ where: { phone } });
         if (existingSupplier) {
@@ -106,6 +121,13 @@ exports.updateSupplier = async (req, res) => {
 
         // Check for duplicate phone if phone is being updated
         if (phone && phone !== supplier.phone) {
+            if (!isValidSriLankanPhone(phone)) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'VALIDATION_ERROR', message: 'Invalid primary Sri Lankan phone number' }
+                });
+            }
+
             const existingSupplier = await Supplier.findOne({ where: { phone } });
             if (existingSupplier) {
                 return res.status(400).json({
@@ -113,6 +135,13 @@ exports.updateSupplier = async (req, res) => {
                     error: { code: 'DUPLICATE_ENTRY', message: 'Supplier with this phone number already exists' }
                 });
             }
+        }
+
+        if (phone2 && !isValidSriLankanPhone(phone2)) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Invalid secondary Sri Lankan phone number' }
+            });
         }
 
         await supplier.update({

@@ -1,5 +1,6 @@
 const { Customer, CustomerTransaction, Bottle } = require('../models');
 const { v4: uuidv4 } = require('uuid');
+const { isValidSriLankanPhone } = require('../utils/validation');
 
 // Generate unique ID
 const generateId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -67,6 +68,13 @@ exports.createCustomer = async (req, res) => {
             });
         }
 
+        if (phone && !isValidSriLankanPhone(phone)) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Invalid Sri Lankan phone number' }
+            });
+        }
+
         const customer = await Customer.create({
             id: generateId('cust'),
             name,
@@ -95,6 +103,13 @@ exports.updateCustomer = async (req, res) => {
         }
 
         const { name, email, phone, address, loyaltyPoints, totalCredit, bottlesInHand } = req.body;
+
+        if (phone && !isValidSriLankanPhone(phone)) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Invalid Sri Lankan phone number' }
+            });
+        }
 
         await customer.update({
             name: name !== undefined ? name : customer.name,
