@@ -10,7 +10,7 @@ module.exports = (sequelize) => {
         name: {
             type: DataTypes.STRING(50),
             allowNull: false,
-            unique: true,
+            unique: 'roles_name_unique',
             comment: 'Role name (user, super_admin, admin, manager, super_cashier, cashier)'
         },
         displayName: {
@@ -41,7 +41,6 @@ module.exports = (sequelize) => {
         timestamps: true,
         underscored: true,
         indexes: [
-            { fields: ['name'], unique: true },
             { fields: ['is_active'] }
         ]
     });

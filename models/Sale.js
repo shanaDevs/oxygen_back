@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
         invoiceNumber: {
             type: DataTypes.STRING(50),
             allowNull: false,
-            unique: true,
+            unique: 'sales_invoice_number_unique',
             field: 'invoice_number'
         },
         // Customer info

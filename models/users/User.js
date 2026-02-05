@@ -44,7 +44,7 @@ module.exports = (sequelize) => {
         phone: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true,
+            unique: 'users_phone_unique',
             validate: {
                 notEmpty: true
             }
@@ -53,7 +53,7 @@ module.exports = (sequelize) => {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
             allowNull: false
-        },        
+        },
         isDeleted: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
