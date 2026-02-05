@@ -7,7 +7,7 @@ module.exports = (sequelize, DataTypes) => {
         serialNumber: {
             type: DataTypes.STRING(100),
             allowNull: true,
-            unique: true,
+            unique: 'bottles_serial_number_unique',
             field: 'serial_number'
         },
         // Bottle capacity in liters
